@@ -1,0 +1,50 @@
+name: flutter_translation_app
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.6 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.2
+
+
+  # 状態管理
+  flutter_riverpod:
+  
+  # Admob
+  # google_mobile_ads:
+
+  # UI
+  flutter_spinkit:
+
+  flutter_tts:
+  translator:
+
+  flex_color_scheme:
+
+  # app_review: any
+  # share: any
+
+  flutter_slidable:
+
+  # app_tracking_transparency:
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+  build_runner:
+  riverpod_annotation:
+  riverpod_generator:
+
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/country/
