@@ -1,52 +1,19 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:flutter_translation_app/utils/utils.dart';
+import 'package:flutter_translation_app/utils/constants.dart';
+import 'package:flutter_translation_app/widgets/chips_widget.dart';
+import 'package:flutter_translation_app/widgets/slidable_action_widget.dart';
+import 'package:flutter_translation_app/widgets/translation_card_widget.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:translator/translator.dart';
 
-// import '../utils/ad_helper.dart';
+class MainPage extends HookWidget {
+  final flutterTts = FlutterTts();
+  final translator = GoogleTranslator();
 
-class MainPage extends StatefulWidget {
-  const MainPage({Key? key}) : super(key: key);
-
-  @override
-  _MainPageState createState() => _MainPageState();
-}
-
-class _MainPageState extends State<MainPage> {
-  final textController = TextEditingController();
-
-  bool us = true,
-      uk = true,
-      ja = true,
-      cn = true,
-      ko = true,
-      fr = true,
-      es = true,
-      de = true,
-      it = true,
-      ru = true,
-      hi = true;
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    textController.dispose();
-    super.dispose();
-  }
-
-  FlutterTts flutterTts = FlutterTts();
-  GoogleTranslator translator = GoogleTranslator();
-  String inputText = '';
-  bool _loading = false;
-  List<String> _translatedTexts = [];
   final List<String> _languagesCode = [
     'en',
     'ja',
@@ -60,23 +27,9 @@ class _MainPageState extends State<MainPage> {
     'hi',
   ];
 
-  Future translate() async {
-    List<String> translatedTexts = [];
-    setState(() {
-      _loading = true;
-    });
-    for (String code in _languagesCode) {
-      Translation translation = await translator.translate(inputText, to: code);
-      String translatedText = translation.text;
-      translatedTexts.add(translatedText);
-    }
-    setState(() {
-      _translatedTexts = translatedTexts;
-      _loading = false;
-    });
-  }
+  MainPage({super.key});
 
-  Future speak(String languageCode, String text) async {
+  Future speak({required String languageCode, required String text}) async {
     await flutterTts.setLanguage(languageCode);
     await flutterTts.setPitch(1);
     await flutterTts.setVolume(1);
@@ -86,71 +39,89 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
+    final us = useState(true);
+    final uk = useState(true);
+    final ja = useState(true);
+    final cn = useState(true);
+    final ko = useState(true);
+    final fr = useState(true);
+    final es = useState(true);
+    final de = useState(true);
+    final it = useState(true);
+    final ru = useState(true);
+    final hi = useState(true);
+
+    final loading = useState(false);
+    final translatedTextList = useState<List<String>>([]);
+    final searchTextController = useTextEditingController();
+
+    Future translate() async {
+      List<String> translatedTexts = [];
+      loading.value = true;
+      try {
+        for (String code in _languagesCode) {
+          final translation =
+              await translator.translate(searchTextController.text, to: code);
+          final translatedText = translation.text;
+          if (translatedText.isEmpty) {
+            throw Exception('翻訳に失敗しました。');
+          }
+          translatedTexts.add(translatedText);
+        }
+        translatedTextList.value = translatedTexts;
+      } catch (e) {
+        print(e); // 実際のアプリケーションでは、エラーハンドリングを適切に行う必要があります。
+        translatedTextList.value = [];
+      } finally {
+        loading.value = false;
+      }
+    }
+
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
+        resizeToAvoidBottomInset: false,
         backgroundColor: Colors.white,
         body: SafeArea(
           child: Column(
             children: [
               // Search TextField
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 8.0, horizontal: 10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Card(
-                        elevation: 12,
-                        child: CupertinoTextField(
-                          minLines: 5,
-                          maxLines: 8,
-                          controller: textController,
-                          style: const TextStyle(color: Colors.black45),
-                          placeholder: "テキストを入力またはペーストしてください。",
-                          suffix: CupertinoButton(
-                            child: const Icon(CupertinoIcons.clear),
-                            onPressed: () {
-                              textController.clear();
-                            },
-                          ),
-                          onChanged: (input) {
-                            setState(() {
-                              inputText = input;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                    Container(
-                      width: 60,
-                      child: _loading
-                          ? const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 10),
-                              child: SpinKitCubeGrid(
-                                color: Colors.black54,
-                                size: 25,
-                              ),
-                            )
-                          : ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                shape: const CircleBorder(),
-                                primary: Colors.white,
-                              ),
-                              onPressed: () {
-                                if (inputText.isNotEmpty) {
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 8.0, horizontal: 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Card(
+                          elevation: 8,
+                          child: CupertinoTextField(
+                            minLines: 5,
+                            maxLines: 8,
+                            controller: searchTextController,
+                            placeholderStyle:
+                                const TextStyle(color: Colors.black45),
+                            placeholder: "テキストを入力またはペーストしてください。",
+                            onChanged: (value) async {
+                              await Future.delayed(const Duration(seconds: 3));
+                              if (value == searchTextController.text) {
+                                if (searchTextController.text.isNotEmpty) {
                                   translate();
                                 }
-                              },
-                              child: Icon(Icons.search,
-                                  color: inputText.isNotEmpty
-                                      ? Colors.black
-                                      : Colors.black45),
-                            ),
-                    )
-                  ],
-                ),
-              ),
+                              }
+                            },
+                            suffix: searchTextController.text.isNotEmpty
+                                ? CupertinoButton(
+                                    child: const Icon(CupertinoIcons.clear),
+                                    onPressed: () {
+                                      searchTextController.clear();
+                                    },
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )),
 
               //
               Expanded(
@@ -158,448 +129,359 @@ class _MainPageState extends State<MainPage> {
                   physics: const BouncingScrollPhysics(),
                   children: [
                     Visibility(
-                      visible: us,
+                      visible: us.value,
                       child: Slidable(
                         endActionPane: ActionPane(
                           extentRatio: 0.2,
-                          motion: ScrollMotion(), // (5)
+                          motion: const ScrollMotion(),
                           children: [
-                            SlidableAction(
-                              onPressed: (_) {
-                                setState(() {
-                                  us ^= true;
-                                });
-                              },
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              icon: Icons.delete,
-                              label: 'Remove',
-                            )
+                            SlidableActionWidget(
+                                countryCode: us, label: 'Remove'),
                           ],
                         ),
-                        child: buildLangButton(
-                            lang: "en-US",
-                            tt: 0,
-                            countryImage: "assets/country/united-states.png",
-                            countryName: "United States American",
-                            decoration: langDecoration1,
-                            delay: 5),
+                        child: GestureDetector(
+                          onTap: () {
+                            if (translatedTextList.value.isNotEmpty) {
+                              speak(
+                                  languageCode: "en-US",
+                                  text: translatedTextList.value[0]);
+                            }
+                          },
+                          child: TranslationCard(
+                              context: context,
+                              translatedTextList: translatedTextList,
+                              lang: "en-US",
+                              tt: 0,
+                              countryImage: "assets/country/united-states.png",
+                              countryName: "United States American",
+                              decoration: langDecoration1,
+                              delay: 5),
+                        ),
                       ),
                     ),
                     Visibility(
-                      visible: uk,
+                      visible: uk.value,
                       child: Slidable(
                         endActionPane: ActionPane(
                           extentRatio: 0.2,
-                          motion: ScrollMotion(), // (5)
+                          motion: const ScrollMotion(),
                           children: [
-                            SlidableAction(
-                              onPressed: (_) {
-                                setState(() {
-                                  uk ^= true;
-                                });
-                              },
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              icon: Icons.delete,
-                              label: 'Remove',
-                            )
+                            SlidableActionWidget(
+                                countryCode: uk, label: 'Remove'),
                           ],
                         ),
-                        child: buildLangButton(
-                            lang: "en-GB",
-                            tt: 0,
-                            countryImage: "assets/country/united-kingdom.png",
-                            countryName: "United Kingdom",
-                            decoration: langDecoration2,
-                            delay: 4),
+                        child: GestureDetector(
+                          onTap: () {
+                            if (translatedTextList.value.isNotEmpty) {
+                              speak(
+                                  languageCode: "en-GB",
+                                  text: translatedTextList.value[0]);
+                            }
+                          },
+                          child: TranslationCard(
+                              context: context,
+                              translatedTextList: translatedTextList,
+                              lang: "en-GB",
+                              tt: 0,
+                              countryImage: "assets/country/united-kingdom.png",
+                              countryName: "United Kingdom",
+                              decoration: langDecoration2,
+                              delay: 4),
+                        ),
                       ),
                     ),
                     Visibility(
-                      visible: ja,
+                      visible: ja.value,
                       child: Slidable(
                         endActionPane: ActionPane(
                           extentRatio: 0.2,
-                          motion: ScrollMotion(), // (5)
+                          motion: const ScrollMotion(),
                           children: [
-                            SlidableAction(
-                              onPressed: (_) {
-                                setState(() {
-                                  ja ^= true;
-                                });
-                              },
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              icon: Icons.delete,
-                              label: '削除',
-                            )
+                            SlidableActionWidget(countryCode: ja, label: '削除'),
                           ],
                         ),
-                        child: buildLangButton(
-                            lang: "ja-JP",
-                            tt: 1,
-                            countryImage: "assets/country/japan.png",
-                            countryName: "日本",
-                            decoration: langDecoration1,
-                            delay: 4.5),
+                        child: GestureDetector(
+                          onTap: () {
+                            if (translatedTextList.value.isNotEmpty) {
+                              speak(
+                                  languageCode: "ja-JP",
+                                  text: translatedTextList.value[1]);
+                            }
+                          },
+                          child: TranslationCard(
+                              context: context,
+                              translatedTextList: translatedTextList,
+                              lang: "ja-JP",
+                              tt: 1,
+                              countryImage: "assets/country/japan.png",
+                              countryName: "日本",
+                              decoration: langDecoration1,
+                              delay: 4.5),
+                        ),
                       ),
                     ),
                     Visibility(
-                      visible: cn,
+                      visible: cn.value,
                       child: Slidable(
                         endActionPane: ActionPane(
                           extentRatio: 0.2,
-                          motion: ScrollMotion(), // (5)
+                          motion: const ScrollMotion(),
                           children: [
-                            SlidableAction(
-                              onPressed: (_) {
-                                setState(() {
-                                  cn ^= true;
-                                });
-                              },
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              icon: Icons.delete,
-                              label: '消除',
-                            )
+                            SlidableActionWidget(countryCode: cn, label: '消除'),
                           ],
                         ),
-                        child: buildLangButton(
-                            lang: "zh-CN",
-                            tt: 2,
-                            countryImage: "assets/country/china.png",
-                            countryName: "中国",
-                            decoration: langDecoration2,
-                            delay: 3),
-                      ),
-                    ),
-
-                    Visibility(
-                      visible: ko,
-                      child: Slidable(
-                        endActionPane: ActionPane(
-                          extentRatio: 0.2,
-                          motion: ScrollMotion(), // (5)
-                          children: [
-                            SlidableAction(
-                              onPressed: (_) {
-                                setState(() {
-                                  ko ^= true;
-                                });
-                              },
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              icon: Icons.delete,
-                              label: '제거하다',
-                            )
-                          ],
+                        child: GestureDetector(
+                          onTap: () {
+                            if (translatedTextList.value.isNotEmpty) {
+                              speak(
+                                  languageCode: "zh-CN",
+                                  text: translatedTextList.value[2]);
+                            }
+                          },
+                          child: TranslationCard(
+                              context: context,
+                              translatedTextList: translatedTextList,
+                              lang: "zh-CN",
+                              tt: 2,
+                              countryImage: "assets/country/china.png",
+                              countryName: "中国",
+                              decoration: langDecoration2,
+                              delay: 3),
                         ),
-                        child: buildLangButton(
-                            lang: "ko-KR",
-                            tt: 3,
-                            countryImage: "assets/country/korea.png",
-                            countryName: "한국",
-                            decoration: langDecoration1,
-                            delay: 3.5),
                       ),
                     ),
                     Visibility(
-                      visible: fr,
+                      visible: ko.value,
                       child: Slidable(
                         endActionPane: ActionPane(
                           extentRatio: 0.2,
-                          motion: ScrollMotion(), // (5)
+                          motion: const ScrollMotion(),
                           children: [
-                            SlidableAction(
-                              onPressed: (_) {
-                                setState(() {
-                                  fr ^= true;
-                                });
-                              },
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              icon: Icons.delete,
-                              label: 'Supprimer',
-                            )
+                            SlidableActionWidget(
+                                countryCode: ko, label: '제거하다'),
                           ],
                         ),
-                        child: buildLangButton(
-                            lang: "fr-FR",
-                            tt: 4,
-                            countryImage: "assets/country/france.png",
-                            countryName: "France",
-                            decoration: langDecoration2,
-                            delay: 3),
+                        child: GestureDetector(
+                          onTap: () {
+                            if (translatedTextList.value.isNotEmpty) {
+                              speak(
+                                  languageCode: "ko-KR",
+                                  text: translatedTextList.value[3]);
+                            }
+                          },
+                          child: TranslationCard(
+                              context: context,
+                              translatedTextList: translatedTextList,
+                              lang: "ko-KR",
+                              tt: 3,
+                              countryImage: "assets/country/korea.png",
+                              countryName: "한국",
+                              decoration: langDecoration1,
+                              delay: 3.5),
+                        ),
                       ),
                     ),
                     Visibility(
-                      visible: es,
+                      visible: fr.value,
                       child: Slidable(
                         endActionPane: ActionPane(
                           extentRatio: 0.2,
-                          motion: ScrollMotion(), // (5)
+                          motion: const ScrollMotion(),
                           children: [
-                            SlidableAction(
-                              onPressed: (_) {
-                                setState(() {
-                                  es ^= true;
-                                });
-                              },
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              icon: Icons.delete,
-                              label: 'Borrar',
-                            )
+                            SlidableActionWidget(
+                                countryCode: fr, label: 'Supprimer'),
                           ],
                         ),
-                        child: buildLangButton(
-                            lang: "es-ES",
-                            tt: 5,
-                            countryImage: "assets/country/spain.png",
-                            countryName: "España",
-                            decoration: langDecoration1,
-                            delay: 2.5),
+                        child: GestureDetector(
+                          onTap: () {
+                            if (translatedTextList.value.isNotEmpty) {
+                              speak(
+                                  languageCode: "fr-FR",
+                                  text: translatedTextList.value[4]);
+                            }
+                          },
+                          child: TranslationCard(
+                              context: context,
+                              translatedTextList: translatedTextList,
+                              lang: "fr-FR",
+                              tt: 4,
+                              countryImage: "assets/country/france.png",
+                              countryName: "France",
+                              decoration: langDecoration2,
+                              delay: 3),
+                        ),
                       ),
                     ),
                     Visibility(
-                      visible: de,
+                      visible: es.value,
                       child: Slidable(
                         endActionPane: ActionPane(
                           extentRatio: 0.2,
-                          motion: ScrollMotion(), // (5)
+                          motion: const ScrollMotion(),
                           children: [
-                            SlidableAction(
-                              onPressed: (_) {
-                                setState(() {
-                                  de ^= true;
-                                });
-                              },
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              icon: Icons.delete,
-                              label: 'Supprimer',
-                            )
+                            SlidableActionWidget(
+                                countryCode: es, label: 'Borrar'),
                           ],
                         ),
-                        child: buildLangButton(
-                            lang: "de-DE",
-                            tt: 6,
-                            countryImage: "assets/country/germany.png",
-                            countryName: "Deutschland",
-                            decoration: langDecoration2,
-                            delay: 2),
+                        child: GestureDetector(
+                          onTap: () {
+                            if (translatedTextList.value.isNotEmpty) {
+                              speak(
+                                  languageCode: "es-ES",
+                                  text: translatedTextList.value[5]);
+                            }
+                          },
+                          child: TranslationCard(
+                              context: context,
+                              translatedTextList: translatedTextList,
+                              lang: "es-ES",
+                              tt: 5,
+                              countryImage: "assets/country/spain.png",
+                              countryName: "España",
+                              decoration: langDecoration1,
+                              delay: 2.5),
+                        ),
                       ),
                     ),
                     Visibility(
-                      visible: it,
+                      visible: de.value,
                       child: Slidable(
                         endActionPane: ActionPane(
                           extentRatio: 0.2,
-                          motion: ScrollMotion(), // (5)
+                          motion: const ScrollMotion(),
                           children: [
-                            SlidableAction(
-                              onPressed: (_) {
-                                setState(() {
-                                  it ^= true;
-                                });
-                              },
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              icon: Icons.delete,
-                              label: 'löschen',
-                            )
+                            SlidableActionWidget(
+                                countryCode: de, label: 'Supprimer'),
                           ],
                         ),
-                        child: buildLangButton(
-                            lang: "it-IT",
-                            tt: 7,
-                            countryImage: "assets/country/italy.png",
-                            countryName: "Italia",
-                            decoration: langDecoration1,
-                            delay: 1.5),
+                        child: GestureDetector(
+                          onTap: () {
+                            if (translatedTextList.value.isNotEmpty) {
+                              speak(
+                                  languageCode: "de-DE",
+                                  text: translatedTextList.value[6]);
+                            }
+                          },
+                          child: TranslationCard(
+                              context: context,
+                              translatedTextList: translatedTextList,
+                              lang: "de-DE",
+                              tt: 6,
+                              countryImage: "assets/country/germany.png",
+                              countryName: "Deutschland",
+                              decoration: langDecoration2,
+                              delay: 2),
+                        ),
                       ),
                     ),
                     Visibility(
-                      visible: ru,
+                      visible: it.value,
                       child: Slidable(
                         endActionPane: ActionPane(
                           extentRatio: 0.2,
-                          motion: ScrollMotion(), // (5)
+                          motion: const ScrollMotion(),
                           children: [
-                            SlidableAction(
-                              onPressed: (_) {
-                                setState(() {
-                                  ru ^= true;
-                                });
-                              },
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              icon: Icons.delete,
-                              label: 'löschen',
-                            )
+                            SlidableActionWidget(
+                                countryCode: it, label: 'löschen'),
                           ],
                         ),
-                        child: buildLangButton(
-                            lang: "ru-RU",
-                            tt: 8,
-                            countryImage: "assets/country/russia.png",
-                            countryName: "Россия",
-                            decoration: langDecoration2,
-                            delay: 1),
+                        child: GestureDetector(
+                          onTap: () {
+                            if (translatedTextList.value.isNotEmpty) {
+                              speak(
+                                  languageCode: "it-IT",
+                                  text: translatedTextList.value[7]);
+                            }
+                          },
+                          child: TranslationCard(
+                              context: context,
+                              translatedTextList: translatedTextList,
+                              lang: "it-IT",
+                              tt: 7,
+                              countryImage: "assets/country/italy.png",
+                              countryName: "Italia",
+                              decoration: langDecoration1,
+                              delay: 1.5),
+                        ),
                       ),
                     ),
                     Visibility(
-                      visible: hi,
+                      visible: ru.value,
                       child: Slidable(
                         endActionPane: ActionPane(
                           extentRatio: 0.2,
-                          motion: ScrollMotion(), // (5)
+                          motion: const ScrollMotion(),
                           children: [
-                            SlidableAction(
-                              onPressed: (_) {
-                                setState(() {
-                                  hi ^= true;
-                                });
-                              },
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              icon: Icons.delete,
-                              label: 'eliminare',
-                            )
+                            SlidableActionWidget(
+                                countryCode: ru, label: 'löschen'),
                           ],
                         ),
-                        child: buildLangButton(
-                            lang: "hi-IN",
-                            tt: 9,
-                            countryImage: "assets/country/india.png",
-                            countryName: "Hindu",
-                            decoration: langDecoration1,
-                            delay: 0),
+                        child: GestureDetector(
+                          onTap: () {
+                            if (translatedTextList.value.isNotEmpty) {
+                              speak(
+                                  languageCode: "ru-RU",
+                                  text: translatedTextList.value[8]);
+                            }
+                          },
+                          child: TranslationCard(
+                              context: context,
+                              translatedTextList: translatedTextList,
+                              lang: "ru-RU",
+                              tt: 8,
+                              countryImage: "assets/country/russia.png",
+                              countryName: "Россия",
+                              decoration: langDecoration2,
+                              delay: 1),
+                        ),
                       ),
                     ),
-
-                    SizedBox(
+                    Visibility(
+                      visible: hi.value,
+                      child: Slidable(
+                        endActionPane: ActionPane(
+                          extentRatio: 0.2,
+                          motion: const ScrollMotion(),
+                          children: [
+                            SlidableActionWidget(
+                                countryCode: hi, label: 'eliminare'),
+                          ],
+                        ),
+                        child: GestureDetector(
+                          onTap: () {
+                            if (translatedTextList.value.isNotEmpty) {
+                              speak(
+                                  languageCode: "hi-IN",
+                                  text: translatedTextList.value[9]);
+                            }
+                          },
+                          child: TranslationCard(
+                              context: context,
+                              translatedTextList: translatedTextList,
+                              lang: "hi-IN",
+                              tt: 9,
+                              countryImage: "assets/country/india.png",
+                              countryName: "Hindu",
+                              decoration: langDecoration1,
+                              delay: 0),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(
                       height: 40,
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      child: Wrap(
-                        spacing: 4.0,
-                        runSpacing: 4.0,
-                        children: [
-                          Visibility(
-                            visible: !us,
-                            child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    us ^= true;
-                                  });
-                                },
-                                child: CountryChips("United States American")),
-                          ),
-                          Visibility(
-                            visible: !uk,
-                            child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    uk ^= true;
-                                  });
-                                },
-                                child: CountryChips("United States Kingdom")),
-                          ),
-                          Visibility(
-                            visible: !ja,
-                            child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    ja ^= true;
-                                  });
-                                },
-                                child: CountryChips("日本")),
-                          ),
-                          Visibility(
-                            visible: !cn,
-                            child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    cn ^= true;
-                                  });
-                                },
-                                child: CountryChips("中国")),
-                          ),
-                          Visibility(
-                            visible: !ko,
-                            child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    ko ^= true;
-                                  });
-                                },
-                                child: CountryChips("한국")),
-                          ),
-                          Visibility(
-                            visible: !fr,
-                            child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    fr ^= true;
-                                  });
-                                },
-                                child: CountryChips("France")),
-                          ),
-                          Visibility(
-                            visible: !es,
-                            child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    es ^= true;
-                                  });
-                                },
-                                child: CountryChips("España")),
-                          ),
-                          Visibility(
-                            visible: !de,
-                            child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    de ^= true;
-                                  });
-                                },
-                                child: CountryChips("Deutschland")),
-                          ),
-                          Visibility(
-                            visible: !it,
-                            child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    it ^= true;
-                                  });
-                                },
-                                child: CountryChips("Italia")),
-                          ),
-                          Visibility(
-                            visible: !ru,
-                            child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    ru ^= true;
-                                  });
-                                },
-                                child: CountryChips("Россия")),
-                          ),
-                          Visibility(
-                            visible: !hi,
-                            child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    hi ^= true;
-                                  });
-                                },
-                                child: CountryChips("Hindu")),
-                          ),
-                        ],
-                      ),
-                    ),
+                    ChipsWidget(
+                        us: us,
+                        uk: uk,
+                        ja: ja,
+                        cn: cn,
+                        ko: ko,
+                        fr: fr,
+                        es: es,
+                        de: de,
+                        it: it,
+                        ru: ru,
+                        hi: hi),
                   ],
                 ),
               ),
@@ -609,182 +491,4 @@ class _MainPageState extends State<MainPage> {
       ),
     );
   }
-
-  bool RemoveButton(bool country) {
-    country = !country;
-    return country;
-  }
-
-  Widget CountryChips(String countryName) {
-    return Chip(
-      elevation: 8.0,
-      padding: EdgeInsets.all(2.0),
-      avatar: CircleAvatar(
-        backgroundColor: Colors.redAccent,
-        child: Icon(
-          Icons.add,
-          color: Colors.white,
-          size: 20,
-        ),
-      ),
-      label: Text(countryName),
-      backgroundColor: Colors.white,
-      shape: StadiumBorder(
-        side: BorderSide(
-          width: 1,
-          color: Colors.redAccent,
-        ),
-      ),
-    );
-  }
-
-  Future hideBar() =>
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-
-  Widget buildLangButton(
-      {required String lang,
-      required int tt,
-      required String countryImage,
-      required String countryName,
-      required LinearGradient decoration,
-      required double delay}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      child: GestureDetector(
-        onTap: () {
-          if (_translatedTexts.isNotEmpty) speak(lang, _translatedTexts[tt]);
-        },
-        child: Card(
-          elevation: 12,
-          child: Container(
-            // color: const Color(0xff263238),
-            margin: const EdgeInsets.all(10),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            child: Row(
-              children: [
-                Column(
-                  children: [
-                    Image.asset(
-                      countryImage,
-                      width: 50,
-                    ),
-                    _translatedTexts.isEmpty
-                        ? Container()
-                        : const Icon(
-                            Icons.record_voice_over,
-                            color: Colors.black,
-                          )
-                  ],
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: TextSelectionTheme(
-                    data: const TextSelectionThemeData(),
-                    child: Text(
-                      _translatedTexts.isEmpty
-                          ? countryName
-                          : _translatedTexts[tt],
-                      style: const TextStyle(
-                          fontSize: 20,
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                Container(
-                  child: _translatedTexts.isEmpty
-                      ? null
-                      : Column(
-                          children: [
-                            IconButton(
-                                onPressed: () {
-                                  final data =
-                                      ClipboardData(text: _translatedTexts[tt]);
-                                  Clipboard.setData(data);
-
-                                  showSnackbar(lang, countryImage);
-                                },
-                                icon: const Icon(
-                                  Icons.copy,
-                                  color: Colors.black,
-                                )),
-                          ],
-                        ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void showSnackbar(
-    String lang,
-    String countryImage,
-  ) {
-    final snackBar = SnackBar(
-      behavior: SnackBarBehavior.floating,
-      padding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
-      margin: const EdgeInsetsDirectional.all(16),
-      content: Row(
-        children: [
-          Image.asset(
-            countryImage,
-            width: 50,
-          ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12),
-            child: Icon(
-              Icons.check,
-              color: Colors.green,
-            ),
-          ),
-          Text(
-            CheckCopyText(lang),
-            style: TextStyle(color: Colors.white),
-          ),
-        ],
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      showCloseIcon: true,
-      elevation: 4.0,
-      backgroundColor: Colors.black,
-      closeIconColor: Colors.green,
-      clipBehavior: Clip.hardEdge,
-      dismissDirection: DismissDirection.up,
-    );
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  }
-
-  String CheckCopyText(String lang) {
-    if (lang == "en-US" || lang == "en-GB") {
-      return "Copy";
-    } else if (lang == "ja-JP") {
-      return "コピーしました";
-    } else if (lang == "zh-CN") {
-      return "复制";
-    } else if (lang == "ko-KR") {
-      return "복사";
-    } else if (lang == "fr-FR" || lang == "it-IT") {
-      return "Copie";
-    } else if (lang == "es-ES") {
-      return "Copiar";
-    } else if (lang == "de-DE") {
-      return "Kopieren";
-    } else if (lang == "ru-RU") {
-      return "Копия";
-    } else if (lang == "hi-IN") {
-      return "प्रतिलिपि";
-    }
-    return "XXX";
-  }
-
-  // void Review() {
-  //   AppReview.requestReview.then((onValue) {
-  //     print(onValue);
-  //   });
-  // }
 }

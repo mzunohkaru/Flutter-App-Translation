@@ -13,25 +13,27 @@ dependencies:
 
 
   # 状態管理
-  flutter_riverpod:
+  flutter_riverpod: any
+  flutter_hooks: any
   
   # Admob
   # google_mobile_ads:
 
   # UI
   flutter_spinkit:
+  flex_color_scheme:
 
+  # 翻訳
   flutter_tts:
   translator:
 
-  flex_color_scheme:
+
 
   # app_review: any
   # share: any
 
   flutter_slidable:
 
-  # app_tracking_transparency:
 
 dev_dependencies:
   flutter_test:

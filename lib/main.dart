@@ -43,7 +43,7 @@ class MyApp extends ConsumerWidget {
         useMaterial3: true,
         typography: Typography.material2021(platform: defaultTargetPlatform),
       ),
-      home: const MainPage(),
+      home: MainPage(),
     );
   }
 }
